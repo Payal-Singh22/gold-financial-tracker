@@ -1,0 +1,128 @@
+/* Custom Styles for Jewellery Billing System */
+
+:root {
+    --brand-gold: #D4AF37;
+    --brand-ivory: #FFFFF0;
+    --brand-green: #013220;
+    --brand-charcoal: #36454F;
+    --brand-charcoal-light: #4a5a67;
+}
+
+body {
+    font-family: 'Poppins', sans-serif;
+    background-color: #f8f9fa;
+}
+
+.navbar-brand {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 700;
+    font-size: 1.5rem;
+}
+
+.card {
+    border: none;
+    border-radius: 10px;
+}
+
+.card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+    font-weight: 600;
+}
+
+.btn {
+    border-radius: 5px;
+    font-weight: 500;
+}
+
+.table {
+    font-size: 0.95rem;
+}
+
+.table thead th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.badge {
+    padding: 0.4em 0.6em;
+    font-weight: 500;
+}
+
+/* Print Styles */
+@media print {
+    .no-print,
+    .navbar,
+    .btn,
+    .card-header {
+        display: none !important;
+    }
+    
+    body {
+        background: white;
+    }
+    
+    .card {
+        border: none;
+        box-shadow: none;
+    }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .container-fluid {
+        padding: 0.5rem;
+    }
+    
+    .card-body {
+        padding: 1rem;
+    }
+    
+    .table {
+        font-size: 0.85rem;
+    }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* Form styling */
+.form-control:focus {
+    border-color: var(--brand-gold);
+    box-shadow: 0 0 0 0.2rem rgba(212, 175, 55, 0.25);
+}
+
+.btn-primary {
+    background-color: var(--brand-green);
+    border-color: var(--brand-green);
+}
+
+.btn-primary:hover {
+    background-color: #014a2f;
+    border-color: #014a2f;
+}
+
+/* Loading spinner */
+.spinner-border-sm {
+    width: 1rem;
+    height: 1rem;
+    border-width: 0.15em;
+}
+

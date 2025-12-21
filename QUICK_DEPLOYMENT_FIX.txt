@@ -1,0 +1,37 @@
+================================================================================
+QUICK FIX FOR STATIC FILES DEPLOYMENT ISSUE
+================================================================================
+
+PROBLEM:
+- Static files (CSS, JS) returning 404 errors
+- MIME type errors
+- JavaScript functions not working
+
+SOLUTION (Run these commands on your production server):
+
+1. Install WhiteNoise:
+   pip install whitenoise==6.6.0
+
+2. Collect static files:
+   python manage.py collectstatic --noinput
+
+3. Restart your Django server:
+   (Choose based on your setup)
+   - Gunicorn: pkill -HUP gunicorn
+   - Systemd: sudo systemctl restart your-service-name
+   - Docker: docker-compose restart
+
+VERIFICATION:
+After restart, check these URLs work:
+- https://kljewellers.novagreen.help/static/css/style.css
+- https://kljewellers.novagreen.help/static/js/main.js
+- https://kljewellers.novagreen.help/static/js/bill_create.js
+
+If they return 404, check:
+1. WhiteNoise middleware is in settings.py (already added)
+2. STATICFILES_STORAGE is set (already added)
+3. staticfiles/ directory exists and has files
+4. File permissions are correct (chmod -R 755 staticfiles/)
+
+================================================================================
+

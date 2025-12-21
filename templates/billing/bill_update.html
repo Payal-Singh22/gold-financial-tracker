@@ -1,0 +1,203 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Update Bill {{ bill.bill_number }} - Jewellery Billing System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-3">
+        <div class="col-12">
+            <h2><i class="fas fa-edit me-2"></i>Update Bill {{ bill.bill_number }}</h2>
+        </div>
+    </div>
+
+    <form method="post" id="bill-form">
+        {% csrf_token %}
+        
+        <div class="row">
+            <div class="col-md-4">
+                <div class="card shadow-sm mb-3">
+                    <div class="card-header">
+                        <h5 class="mb-0">Bill Information</h5>
+                    </div>
+                    <div class="card-body">
+                        {{ bill_form|crispy }}
+                        <input type="hidden" id="items-data" name="items" value="[]">
+                        <input type="hidden" id="old-gold-data" name="old_gold" value="[]">
+                        <input type="hidden" id="gold-rate-input" value="{{ gold_rate.rate_24k|default:'0' }}">
+                        <input type="hidden" id="silver-rate-input" value="{{ silver_rate.rate_per_gram|default:'0' }}">
+                        <input type="hidden" id="bar-rate-input" value="{% if bar_rate %}{{ bar_rate.rate_per_gram|default:'0' }}{% else %}0{% endif %}">
+                    </div>
+                </div>
+
+                <!-- Old Gold Exchange -->
+                <div class="card shadow-sm mb-3">
+                    <div class="card-header">
+                        <h5 class="mb-0">Old Gold Exchange</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-2 mb-2">
+                            <div class="col-md-4">
+                                <input type="number" step="0.001" min="0.001" class="form-control" 
+                                       id="old-gold-weight" placeholder="Weight (gm)">
+                            </div>
+                            <div class="col-md-4">
+                                <input type="number" step="0.01" min="0.01" class="form-control" 
+                                       id="old-gold-rate" value="{{ gold_rate.rate_24k|default:'0' }}" placeholder="Rate">
+                            </div>
+                            <div class="col-md-4">
+                                <input type="text" class="form-control" id="old-gold-desc" placeholder="Description">
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-warning btn-sm w-100" onclick="addOldGold()">
+                            <i class="fas fa-plus me-1"></i>Add Old Gold
+                        </button>
+                        <div id="old-gold-list" class="mt-3">
+                            {% for og in bill.old_gold_exchanges.all %}
+                            <div class="old-gold-item mb-2 p-2 border rounded">
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        <strong>{{ og.weight|floatformat:3 }} gm</strong> @ ₹{{ og.rate_per_gram|floatformat:2 }} = ₹{{ og.value|floatformat:2 }}
+                                        {% if og.description %}<br><small>{{ og.description }}</small>{% endif %}
+                                    </div>
+                                    <button type="button" class="btn btn-sm btn-danger" onclick="removeOldGold(this)">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-8">
+                <!-- Bill Items -->
+                <div class="card shadow-sm mb-3">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Bill Items</h5>
+                        <button type="button" class="btn btn-primary btn-sm" onclick="addItem()">
+                            <i class="fas fa-plus me-1"></i>Add Item
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div id="items-container">
+                            <!-- Items will be added here dynamically -->
+                        </div>
+                        <div class="mt-3">
+                            <table class="table table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th>Type / Particulars</th>
+                                        <th>Net.Wt</th>
+                                        <th>Tunch wstg</th>
+                                        <th>Labour</th>
+                                        <th>Rate</th>
+                                        <th>SFine</th>
+                                        <th>GFine</th>
+                                        <th>Amount</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="items-table-body">
+                                    <!-- Items will be loaded dynamically via JavaScript -->
+                                </tbody>
+                                <tfoot>
+                                    <tr class="table-info">
+                                        <th colspan="5">Total</th>
+                                        <th id="total-s-fine">{{ bill.total_fine_gold|floatformat:3 }}</th>
+                                        <th id="total-fine-gold">{{ bill.total_fine_gold|floatformat:3 }}</th>
+                                        <th id="total-amount">₹ {{ bill.total_amount|floatformat:2 }}</th>
+                                        <th></th>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-end">
+                    <a href="{% url 'bill_detail' bill.pk %}" class="btn btn-secondary">
+                        <i class="fas fa-times me-1"></i>Cancel
+                    </a>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-save me-1"></i>Update Bill
+                    </button>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% load static %}
+{% block extra_js %}
+<script src="{% static 'js/bill_create.js' %}"></script>
+<script>
+// Load existing items
+document.addEventListener('DOMContentLoaded', function() {
+    const existingItems = [
+        {% for item in bill.items.all %}
+        {
+            item_type: '{{ item.item_type|default:"S" }}',
+            material_type: '{{ item.material_type|default:"gold" }}',
+            description: '{{ item.description|escapejs }}',
+            item_code: '{{ item.item_code|escapejs }}',
+            item_number: '{{ item.item_number|escapejs }}',
+            net_weight: {% if item.net_weight and item.net_weight > 0 %}{{ item.net_weight }}{% else %}0{% endif %},
+            tunch_wstg: {% if item.tunch_wstg and item.tunch_wstg > 0 %}{{ item.tunch_wstg }}{% else %}91.60{% endif %},
+            labour: {% if item.labour %}{{ item.labour }}{% else %}0{% endif %},
+            rate: {% if item.rate and item.rate > 0 %}{{ item.rate }}{% else %}{{ bill.gold_rate|default:7000 }}{% endif %}
+        },
+        {% endfor %}
+    ];
+    // Load items and trigger calculations
+    existingItems.forEach(item => {
+        addItemRow(item);
+        // Trigger calculation for the newly added row
+        setTimeout(() => {
+            const rows = document.querySelectorAll('#items-table-body tr');
+            if (rows.length > 0) {
+                const lastRow = rows[rows.length - 1];
+                updateItemCalculations(lastRow);
+            }
+        }, 100);
+    });
+    
+    // Wait a bit then update totals
+    setTimeout(() => {
+        updateTotals();
+    }, 200);
+    
+    // Load old gold items
+    {% for og in bill.old_gold_exchanges.all %}
+    oldGoldItems.push({
+        weight: {{ og.weight|default:0 }},
+        rate_per_gram: {{ og.rate_per_gram|default:bill.gold_rate }},
+        description: '{{ og.description|escapejs }}',
+        value: {{ og.value|default:0 }}
+    });
+    {% endfor %}
+    
+    // Update old gold display
+    oldGoldItems.forEach(og => {
+        const list = document.getElementById('old-gold-list');
+        const div = document.createElement('div');
+        div.className = 'old-gold-item mb-2 p-2 border rounded';
+        div.innerHTML = `
+            <div class="d-flex justify-content-between">
+                <div>
+                    <strong>${og.weight.toFixed(3)} gm</strong> @ ₹${og.rate_per_gram.toFixed(2)} = ₹${og.value.toFixed(2)}
+                    ${og.description ? '<br><small>' + og.description + '</small>' : ''}
+                </div>
+                <button type="button" class="btn btn-sm btn-danger" onclick="removeOldGold(this)">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        `;
+        list.appendChild(div);
+    });
+});
+</script>
+{% endblock %}
+

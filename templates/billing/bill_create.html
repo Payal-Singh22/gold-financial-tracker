@@ -1,0 +1,349 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Create Bill - Jewellery Billing System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-3">
+        <div class="col-12">
+            <h2><i class="fas fa-receipt me-2"></i>Create New Bill</h2>
+        </div>
+    </div>
+
+    <form method="post" id="bill-form">
+        {% csrf_token %}
+        
+        <div class="row">
+            <div class="col-md-4">
+                <div class="card shadow-sm mb-3">
+                    <div class="card-header">
+                        <h5 class="mb-0">Bill Information</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="{{ bill_form.customer.id_for_label }}" class="form-label">
+                                {{ bill_form.customer.label }}
+                                <span class="text-danger">*</span>
+                            </label>
+                            <div class="input-group">
+                                {{ bill_form.customer }}
+                                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createCustomerModal">
+                                    <i class="fas fa-plus"></i> New
+                                </button>
+                            </div>
+                            {% if bill_form.customer.errors %}
+                                <div class="text-danger small">{{ bill_form.customer.errors }}</div>
+                            {% endif %}
+                        </div>
+                        {% for field in bill_form %}
+                            {% if field.name != 'customer' %}
+                                <div class="mb-3">
+                                    {{ field|as_crispy_field }}
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                        <input type="hidden" id="items-data" name="items" value="[]">
+                        <input type="hidden" id="old-gold-data" name="old_gold" value="[]">
+                        <input type="hidden" id="gold-rate-input" value="{{ gold_rate.rate_24k|default:'0' }}">
+                        <input type="hidden" id="silver-rate-input" value="{{ silver_rate.rate_per_gram|default:'0' }}">
+                        <input type="hidden" id="bar-rate-input" value="{% if bar_rate %}{{ bar_rate.rate_per_gram|default:'0' }}{% else %}0{% endif %}">
+                    </div>
+                </div>
+
+                <!-- Old Gold Exchange -->
+                <div class="card shadow-sm mb-3">
+                    <div class="card-header">
+                        <h5 class="mb-0">Old Gold Exchange</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-2 mb-2">
+                            <div class="col-md-4">
+                                <input type="number" step="0.001" min="0.001" class="form-control" 
+                                       id="old-gold-weight" placeholder="Weight (gm)">
+                            </div>
+                            <div class="col-md-4">
+                                <input type="number" step="0.01" min="0.01" class="form-control" 
+                                       id="old-gold-rate" value="{{ gold_rate.rate_24k|default:'0' }}" placeholder="Rate">
+                            </div>
+                            <div class="col-md-4">
+                                <input type="text" class="form-control" id="old-gold-desc" placeholder="Description">
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-warning btn-sm w-100" onclick="addOldGold()">
+                            <i class="fas fa-plus me-1"></i>Add Old Gold
+                        </button>
+                        <div id="old-gold-list" class="mt-3"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-8">
+                <!-- Bill Items -->
+                <div class="card shadow-sm mb-3">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Bill Items</h5>
+                        <button type="button" class="btn btn-primary btn-sm" onclick="addItem()">
+                            <i class="fas fa-plus me-1"></i>Add Item
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div id="items-container">
+                            <!-- Items will be added here dynamically -->
+                        </div>
+                        <div class="mt-3">
+                            <table class="table table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th>Type / Particulars</th>
+                                        <th>Net.Wt</th>
+                                        <th>Tunch wstg</th>
+                                        <th>Labour</th>
+                                        <th>Rate</th>
+                                        <th>SFine</th>
+                                        <th>GFine</th>
+                                        <th>Amount</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="items-table-body">
+                                    <!-- Items rows will be added here -->
+                                </tbody>
+                                <tfoot>
+                                    <tr class="table-info">
+                                        <th colspan="5">Total</th>
+                                        <th id="total-s-fine">0.000</th>
+                                        <th id="total-fine-gold">0.000</th>
+                                        <th id="total-amount">₹ 0.00</th>
+                                        <th></th>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Totals Summary -->
+                <div class="card shadow-sm mb-3">
+                    <div class="card-header">
+                        <h5 class="mb-0">Bill Summary</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <table class="table table-sm">
+                                    <tr>
+                                        <td>Total Fine Gold:</td>
+                                        <td class="text-end"><strong id="summary-fine-gold">0.000 gm</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Gross Amount:</td>
+                                        <td class="text-end"><strong id="summary-gross">₹ 0.00</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Old Gold Value:</td>
+                                        <td class="text-end"><strong id="summary-old-gold">₹ 0.00</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td>CGST (1.5%):</td>
+                                        <td class="text-end" id="summary-cgst">₹ 0.00</td>
+                                    </tr>
+                                    <tr>
+                                        <td>SGST (1.5%):</td>
+                                        <td class="text-end" id="summary-sgst">₹ 0.00</td>
+                                    </tr>
+                                    <tr class="table-primary">
+                                        <td><strong>Net Payable:</strong></td>
+                                        <td class="text-end"><strong id="summary-net-payable">₹ 0.00</strong></td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-end">
+                    <a href="{% url 'dashboard' %}" class="btn btn-secondary">
+                        <i class="fas fa-times me-1"></i>Cancel
+                    </a>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-save me-1"></i>Create Bill
+                    </button>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% load static %}
+{% block extra_js %}
+<script src="{% static 'js/bill_create.js' %}"></script>
+
+<!-- Create Customer Modal -->
+<div class="modal fade" id="createCustomerModal" tabindex="-1" aria-labelledby="createCustomerModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createCustomerModalLabel">
+                    <i class="fas fa-user-plus me-2"></i>Create New Customer
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="create-customer-form">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="customer-name" class="form-label">Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="customer-name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="customer-phone" class="form-label">Phone <span class="text-danger">*</span></label>
+                        <input type="tel" class="form-control" id="customer-phone" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="customer-email" class="form-label">Email</label>
+                        <input type="email" class="form-control" id="customer-email">
+                    </div>
+                    <div class="mb-3">
+                        <label for="customer-address" class="form-label">Address</label>
+                        <textarea class="form-control" id="customer-address" rows="2"></textarea>
+                    </div>
+                    <div id="customer-form-error" class="alert alert-danger d-none" role="alert"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-1"></i>Create Customer
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const createCustomerForm = document.getElementById('create-customer-form');
+    const customerSelect = document.getElementById('id_customer');
+    
+    if (!createCustomerForm || !customerSelect) {
+        return; // Exit if elements not found
+    }
+    
+    createCustomerForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        // Get form elements - check they exist
+        const nameInput = document.getElementById('customer-name');
+        const phoneInput = document.getElementById('customer-phone');
+        const emailInput = document.getElementById('customer-email');
+        const addressInput = document.getElementById('customer-address');
+        const errorDiv = document.getElementById('customer-form-error');
+        
+        if (!nameInput || !phoneInput) {
+            console.error('Customer form elements not found');
+            return;
+        }
+        
+        const name = nameInput.value.trim();
+        const phone = phoneInput.value.trim();
+        const email = emailInput ? emailInput.value.trim() : '';
+        const address = addressInput ? addressInput.value.trim() : '';
+        
+        // Clear previous errors
+        if (errorDiv) {
+            errorDiv.classList.add('d-none');
+            errorDiv.textContent = '';
+        }
+        
+        // Validation
+        if (!name || !phone) {
+            if (errorDiv) {
+                errorDiv.textContent = 'Name and Phone are required fields.';
+                errorDiv.classList.remove('d-none');
+            } else {
+                alert('Name and Phone are required fields.');
+            }
+            return;
+        }
+        
+        // Get CSRF token
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+        if (!csrfToken) {
+            if (errorDiv) {
+                errorDiv.textContent = 'CSRF token not found. Please refresh the page.';
+                errorDiv.classList.remove('d-none');
+            } else {
+                alert('CSRF token not found. Please refresh the page.');
+            }
+            return;
+        }
+        
+        // Create customer via AJAX
+        fetch('{% url "create_customer_ajax" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken.value
+            },
+            body: JSON.stringify({
+                name: name,
+                phone: phone,
+                email: email,
+                address: address
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Add new customer to select dropdown
+                const option = document.createElement('option');
+                option.value = data.customer.id;
+                option.textContent = data.customer.name + ' (' + data.customer.phone + ')';
+                option.selected = true;
+                customerSelect.appendChild(option);
+                
+                // Close modal and reset form
+                const modal = bootstrap.Modal.getInstance(document.getElementById('createCustomerModal'));
+                modal.hide();
+                createCustomerForm.reset();
+                
+                // Show success message
+                const alert = document.createElement('div');
+                alert.className = 'alert alert-success alert-dismissible fade show';
+                alert.innerHTML = `
+                    <strong>Success!</strong> Customer "${data.customer.name}" created and selected.
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                `;
+                document.querySelector('.container-fluid').insertBefore(alert, document.querySelector('.container-fluid').firstChild);
+                
+                // Auto-dismiss after 3 seconds
+                setTimeout(() => {
+                    alert.remove();
+                }, 3000);
+            } else {
+                const errorMsg = data.error || 'Failed to create customer. Please try again.';
+                if (errorDiv) {
+                    errorDiv.textContent = errorMsg;
+                    errorDiv.classList.remove('d-none');
+                } else {
+                    alert(errorMsg);
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            const errorMsg = 'An error occurred. Please try again.';
+            if (errorDiv) {
+                errorDiv.textContent = errorMsg;
+                errorDiv.classList.remove('d-none');
+            } else {
+                alert(errorMsg);
+            }
+        });
+    });
+});
+</script>
+{% endblock %}
+

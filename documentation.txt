@@ -1,0 +1,1699 @@
+================================================================================
+                    JEWELLERY BILLING SOFTWARE
+                    COMPLETE PROJECT DOCUMENTATION
+================================================================================
+
+TABLE OF CONTENTS
+=================
+1. Project Overview
+2. Architecture & Technology Stack
+3. Project Structure
+4. Database Models (Detailed)
+5. Views & Controllers (Detailed)
+6. Forms (Detailed)
+7. Templates (Detailed)
+8. JavaScript Files (Detailed)
+9. URL Routing
+10. Business Logic & Calculations
+11. Workflows & User Flows
+12. Signals & Auto-calculations
+13. Static Files & Assets
+14. Configuration & Settings
+15. API Endpoints
+16. Security & Authentication
+17. Error Handling
+18. Deployment Considerations
+19. Troubleshooting Guide
+20. Future Enhancements
+
+================================================================================
+1. PROJECT OVERVIEW
+================================================================================
+
+PROJECT NAME: Jewellery Billing Software
+VERSION: 1.0
+FRAMEWORK: Django 4.2.7
+LANGUAGE: Python 3.8+
+DATABASE: SQLite (default), PostgreSQL ready
+FRONTEND: Django Templates + Bootstrap 5 + Vanilla JavaScript
+
+PURPOSE:
+A comprehensive web-based billing system designed specifically for jewellery
+stores to manage:
+- Customer information
+- Bill/invoice creation with multiple items
+- Gold rate management
+- Payment tracking
+- PDF generation and email functionality
+- Sales reports and analytics
+
+KEY FEATURES:
+✓ User authentication (login/logout)
+✓ Customer management (CRUD operations)
+✓ Bill creation with multiple items
+✓ Automatic calculations (fine gold, totals, taxes)
+✓ Old gold exchange tracking
+✓ Payment management
+✓ Print-friendly bill layout (16cm × 11cm)
+✓ PDF generation (WeasyPrint)
+✓ Email bills as PDF
+✓ Sales reports with date filtering
+✓ Mobile-responsive design
+✓ Real-time form validation
+
+================================================================================
+2. ARCHITECTURE & TECHNOLOGY STACK
+================================================================================
+
+ARCHITECTURE PATTERN: Model-View-Template (MVT) - Django's implementation of MVC
+
+TECHNOLOGY STACK:
+-----------------
+Backend:
+  - Django 4.2.7 (Python web framework)
+  - Django ORM (Object-Relational Mapping)
+  - Django Forms & Crispy Forms
+  - Django Signals (for auto-calculations)
+  - Django Admin (built-in admin interface)
+
+Frontend:
+  - Django Templates (server-side rendering)
+  - Bootstrap 5.3 (CSS framework)
+  - Vanilla JavaScript (no frameworks)
+  - Font Awesome (icons)
+  - Custom CSS
+
+Database:
+  - SQLite (development, default)
+  - PostgreSQL (production ready)
+
+PDF & Email:
+  - WeasyPrint (PDF generation)
+  - Django Email Backend (SMTP/Console)
+
+Third-party Libraries:
+  - django-crispy-forms (form styling)
+  - crispy-bootstrap5 (Bootstrap 5 integration)
+  - Pillow (image processing, if needed)
+
+ARCHITECTURE FLOW:
+------------------
+1. User Request → URL Router → View Function/Class
+2. View processes request → Queries Models → Gets data
+3. View renders Template with context data
+4. Template renders HTML with static files (CSS/JS)
+5. JavaScript handles client-side interactions
+6. Form submissions → View → Model → Database
+7. Signals trigger auto-calculations on model saves
+
+================================================================================
+3. PROJECT STRUCTURE
+================================================================================
+
+JwelleryBillingSoftware/
+│
+├── billing/                          # Main Django application
+│   ├── __init__.py                  # Package initialization
+│   ├── admin.py                     # Django admin configuration
+│   ├── apps.py                      # App configuration (signals import)
+│   ├── models.py                    # Database models (6 models)
+│   ├── views.py                     # View functions and class-based views
+│   ├── forms.py                    # Django forms (8 forms)
+│   ├── urls.py                      # URL routing configuration
+│   ├── signals.py                   # Django signals for auto-calculations
+│   ├── templatetags/                # Custom template tags
+│   │   ├── __init__.py
+│   │   └── billing_tags.py          # Custom filters (sum_field)
+│   └── migrations/                  # Database migrations
+│       ├── __init__.py
+│       ├── 0001_initial.py
+│       ├── 0002_bill_shop_address_bill_shop_gstin_bill_shop_name_and_more.py
+│       ├── 0003_remove_billitem_fine_gold_and_more.py
+│       └── 0004_recalculate_existing_items.py
+│
+├── jewellery_billing/                # Django project settings
+│   ├── __init__.py
+│   ├── settings.py                  # Main settings file
+│   ├── urls.py                      # Root URL configuration
+│   ├── wsgi.py                      # WSGI configuration
+│   └── asgi.py                      # ASGI configuration
+│
+├── templates/                        # HTML templates
+│   ├── base.html                    # Base template (navigation, layout)
+│   └── billing/                     # App-specific templates
+│       ├── login.html               # Login page
+│       ├── dashboard.html            # Dashboard/home page
+│       ├── customer_list.html        # Customer listing
+│       ├── customer_form.html        # Customer create/update form
+│       ├── customer_confirm_delete.html  # Customer delete confirmation
+│       ├── bill_list.html            # Bill listing
+│       ├── bill_create.html          # Bill creation form
+│       ├── bill_update.html          # Bill update form
+│       ├── bill_detail.html          # Bill detail view
+│       ├── bill_confirm_delete.html  # Bill delete confirmation
+│       ├── bill_print.html           # Print-friendly bill layout
+│       ├── bill_pdf.html             # PDF generation template
+│       └── reports.html              # Reports page
+│
+├── static/                           # Static files (CSS, JS, images)
+│   ├── css/
+│   │   └── style.css                # Custom styles
+│   └── js/
+│       ├── main.js                  # General JavaScript utilities
+│       └── bill_create.js           # Bill creation/update JavaScript
+│
+├── media/                            # User uploaded files (if any)
+├── db.sqlite3                        # SQLite database file
+├── manage.py                         # Django management script
+├── requirements.txt                  # Python dependencies
+├── README.md                         # Basic readme
+├── SETUP_INSTRUCTIONS.md             # Setup guide
+├── QUICK_START.md                    # Quick start guide
+├── DATABASE_ACCESS_GUIDE.md          # Database access guide
+└── DOCUMENTATION.txt                 # This file
+
+================================================================================
+4. DATABASE MODELS (DETAILED)
+================================================================================
+
+4.1 CUSTOMER MODEL
+------------------
+Location: billing/models.py, lines 7-21
+
+Purpose: Stores customer information
+
+Fields:
+  - name (CharField, max_length=200, required)
+    Purpose: Customer's full name
+  - phone (CharField, max_length=20, blank=True)
+    Purpose: Contact phone number
+  - email (EmailField, blank=True)
+    Purpose: Email address for sending bills
+  - address (TextField, blank=True)
+    Purpose: Customer's address
+  - created_at (DateTimeField, auto_now_add=True)
+    Purpose: Record creation timestamp
+  - updated_at (DateTimeField, auto_now=True)
+    Purpose: Last update timestamp
+
+Relationships:
+  - One-to-Many with Bill (Customer can have multiple bills)
+
+Methods:
+  - __str__(): Returns customer name for display
+
+Meta Options:
+  - ordering: ['-created_at'] (newest first)
+
+Database Table: billing_customer
+
+
+4.2 GOLDRATE MODEL
+------------------
+Location: billing/models.py, lines 23-46
+
+Purpose: Manages current gold rate for the store
+
+Fields:
+  - rate_24k (DecimalField, max_digits=10, decimal_places=2)
+    Purpose: 24K gold rate per gram
+    Validation: MinValueValidator(0.01)
+  - updated_by (ForeignKey to User, nullable)
+    Purpose: Tracks who updated the rate
+  - updated_at (DateTimeField, auto_now=True)
+    Purpose: Last update timestamp
+  - is_active (BooleanField, default=True)
+    Purpose: Active/inactive flag for rate
+
+Relationships:
+  - Many-to-One with User (who updated)
+
+Class Methods:
+  - get_current_rate(): Returns the current active gold rate
+    Usage: GoldRate.get_current_rate()
+    Returns: GoldRate object or None
+
+Methods:
+  - __str__(): Returns formatted rate string
+
+Meta Options:
+  - ordering: ['-updated_at']
+  - get_latest_by: 'updated_at'
+
+Database Table: billing_goldrate
+
+
+4.3 BILL MODEL
+--------------
+Location: billing/models.py, lines 48-147
+
+Purpose: Main bill/invoice model storing all bill information
+
+Fields:
+  BILL STATUS CHOICES:
+    - 'draft': Draft bill
+    - 'paid': Fully paid
+    - 'partial': Partially paid
+    - 'unpaid': Not paid
+
+  Basic Information:
+  - bill_number (CharField, max_length=50, unique=True)
+    Purpose: Auto-generated unique bill number (format: JBYYYYMMDD-XXX)
+    Auto-generated in save() method
+  - customer (ForeignKey to Customer, CASCADE delete)
+    Purpose: Bill owner
+  - bill_date (DateTimeField, auto_now_add=True)
+    Purpose: Bill creation date/time
+  - gold_rate (DecimalField, max_digits=10, decimal_places=2)
+    Purpose: Gold rate at time of bill creation
+  - created_by (ForeignKey to User, SET_NULL)
+    Purpose: User who created the bill
+  - created_at (DateTimeField, auto_now_add=True)
+  - updated_at (DateTimeField, auto_now=True)
+
+  Shop Details:
+  - shop_name (CharField, default='ROHTASH SARRAF')
+    Purpose: Shop name displayed on bill
+  - shop_address (TextField, blank=True)
+    Purpose: Shop address
+  - shop_gstin (CharField, max_length=15, blank=True)
+    Purpose: GSTIN number
+
+  Balance Fields (CI Balance):
+  - ci_balance_gold (DecimalField, decimal_places=3)
+    Purpose: CI Balance Gold amount
+  - ci_balance_dr (DecimalField, decimal_places=2)
+    Purpose: CI Balance Debit
+  - ci_balance_cr (DecimalField, decimal_places=2)
+    Purpose: CI Balance Credit
+
+  Totals:
+  - total_fine_gold (DecimalField, decimal_places=3)
+    Purpose: Sum of all items' GFine
+    Calculated in calculate_totals()
+  - total_amount (DecimalField, decimal_places=2)
+    Purpose: Sum of all items' amounts
+    Calculated in calculate_totals()
+
+  Old Gold Exchange:
+  - old_gold_weight (DecimalField, decimal_places=3)
+    Purpose: Total old gold weight
+    Calculated from OldGold objects
+  - old_gold_rate (DecimalField, decimal_places=2)
+    Purpose: Old gold rate used
+  - old_gold_value (DecimalField, decimal_places=2)
+    Purpose: Total old gold value (weight × rate)
+    Calculated from OldGold objects
+
+  Tax:
+  - cgst_percent (DecimalField, default=1.50)
+    Purpose: CGST percentage
+  - sgst_percent (DecimalField, default=1.50)
+    Purpose: SGST percentage
+  - cgst_amount (DecimalField, decimal_places=2)
+    Purpose: CGST amount (calculated)
+  - sgst_amount (DecimalField, decimal_places=2)
+    Purpose: SGST amount (calculated)
+
+  Final Amounts:
+  - net_payable (DecimalField, decimal_places=2)
+    Purpose: Final amount to be paid
+    Formula: total_amount + cgst_amount + sgst_amount - old_gold_value
+  - cash_received (DecimalField, decimal_places=2)
+    Purpose: Total cash received (sum of all payments)
+    Auto-calculated from Payment objects
+  - balance (DecimalField, decimal_places=2)
+    Purpose: Remaining balance
+    Formula: net_payable - cash_received
+
+  Status & Notes:
+  - status (CharField, choices=BILL_STATUS_CHOICES, default='draft')
+    Purpose: Bill payment status
+    Auto-updated in calculate_totals()
+  - notes (TextField, blank=True)
+    Purpose: Additional notes
+
+Relationships:
+  - Many-to-One with Customer
+  - One-to-Many with BillItem (bill.items)
+  - One-to-Many with OldGold (bill.old_gold_exchanges)
+  - One-to-Many with Payment (bill.payments)
+  - Many-to-One with User (created_by)
+
+Methods:
+  - __str__(): Returns "bill_number - customer.name"
+  
+  - save(*args, **kwargs):
+    Purpose: Auto-generate bill_number if not set
+    Format: JBYYYYMMDD-XXX (e.g., JB20251216-001)
+    Logic:
+      1. Check if bill_number exists
+      2. If not, generate date string (YYYYMMDD)
+      3. Find last bill with same date prefix
+      4. Increment sequence number
+      5. Format as JBYYYYMMDD-XXX
+    Calls: super().save()
+  
+  - calculate_totals():
+    Purpose: Calculate all bill totals, taxes, balance, and status
+    Called: Automatically when items/old gold/payments are saved
+    Logic:
+      1. Calculate total_fine_gold = sum of all items' g_fine
+      2. Calculate total_amount = sum of all items' amount
+      3. Calculate taxable_amount = total_amount - old_gold_value
+      4. Calculate cgst_amount = (taxable_amount × cgst_percent) / 100
+      5. Calculate sgst_amount = (taxable_amount × sgst_percent) / 100
+      6. Calculate net_payable = total_amount + cgst_amount + sgst_amount - old_gold_value
+      7. Calculate balance = net_payable - cash_received
+      8. Update status:
+         - If balance <= 0: status = 'paid'
+         - Else if cash_received > 0: status = 'partial'
+         - Else: status = 'unpaid'
+      9. Save the bill
+    Returns: None (saves automatically)
+
+Meta Options:
+  - ordering: ['-created_at'] (newest first)
+
+Database Table: billing_bill
+
+
+4.4 BILLITEM MODEL
+------------------
+Location: billing/models.py, lines 149-212
+
+Purpose: Stores individual items in a bill
+
+ITEM TYPE CHOICES:
+  - 'S': S - New Gold
+  - 'REC': REC - Received Old Gold
+
+Fields:
+  - bill (ForeignKey to Bill, CASCADE delete)
+    Purpose: Parent bill
+  - item_type (CharField, choices=ITEM_TYPE_CHOICES, default='S')
+    Purpose: Type of item (S or REC)
+  - description (CharField, max_length=200)
+    Purpose: Item description (e.g., "Gold Chain")
+  - item_code (CharField, max_length=50, blank=True)
+    Purpose: Item code/SKU
+  - item_number (CharField, max_length=20, blank=True)
+    Purpose: Item number (e.g., 5570, 5560)
+  - net_weight (DecimalField, max_digits=10, decimal_places=3)
+    Purpose: Net weight in grams
+    Validation: MinValueValidator(0.001)
+  - tunch_wstg (DecimalField, max_digits=5, decimal_places=2, default=91.60)
+    Purpose: Tunch wastage percentage (e.g., 78.00, 89.00, 91.60)
+    Validation: MinValueValidator(0.01)
+  - labour (DecimalField, max_digits=12, decimal_places=2, default=0.00)
+    Purpose: Labour/making charges
+  - rate (DecimalField, max_digits=10, decimal_places=2, default=7000.00)
+    Purpose: Rate per gram
+  - s_fine (DecimalField, max_digits=10, decimal_places=3, default=0.000)
+    Purpose: SFine (Silver Fine or Secondary Fine)
+    Calculated in calculate_fines()
+  - g_fine (DecimalField, max_digits=10, decimal_places=3, default=0.000)
+    Purpose: GFine (Gold Fine)
+    Calculated in calculate_fines()
+    Formula: (net_weight × tunch_wstg) / 100
+  - amount (DecimalField, max_digits=12, decimal_places=2, default=0.00)
+    Purpose: Item amount
+    Calculated in calculate_amount()
+    Formula: (g_fine × rate) + labour
+  - order (IntegerField, default=0)
+    Purpose: Display order in bill
+
+Relationships:
+  - Many-to-One with Bill (bill.items)
+
+Methods:
+  - __str__(): Returns "bill_number - description"
+  
+  - calculate_fines():
+    Purpose: Calculate GFine and SFine
+    Formula:
+      g_fine = (net_weight × tunch_wstg) / 100
+      s_fine = g_fine (currently same as GFine)
+    Returns: g_fine value
+  
+  - calculate_amount():
+    Purpose: Calculate item amount
+    Formula:
+      gold_amount = g_fine × rate
+      amount = gold_amount + labour
+    Returns: amount value
+  
+  - save(*args, **kwargs):
+    Purpose: Auto-calculate fines and amount before saving
+    Logic:
+      1. Call calculate_fines()
+      2. Call calculate_amount()
+      3. Save the item
+      4. Trigger bill.calculate_totals() to update bill totals
+    Calls: super().save()
+
+Meta Options:
+  - ordering: ['order', 'id'] (by order, then by ID)
+
+Database Table: billing_billitem
+
+
+4.5 OLDGOLD MODEL
+-----------------
+Location: billing/models.py, lines 214-240
+
+Purpose: Tracks old gold exchanged in a bill
+
+Fields:
+  - bill (ForeignKey to Bill, CASCADE delete)
+    Purpose: Parent bill
+  - weight (DecimalField, max_digits=10, decimal_places=3)
+    Purpose: Old gold weight in grams
+    Validation: MinValueValidator(0.001)
+  - rate_per_gram (DecimalField, max_digits=10, decimal_places=2)
+    Purpose: Rate per gram for old gold
+  - value (DecimalField, max_digits=12, decimal_places=2)
+    Purpose: Total value (weight × rate_per_gram)
+    Calculated in save() method
+  - description (CharField, max_length=200, blank=True)
+    Purpose: Description of old gold
+  - created_at (DateTimeField, auto_now_add=True)
+
+Relationships:
+  - Many-to-One with Bill (bill.old_gold_exchanges)
+
+Methods:
+  - __str__(): Returns "Old Gold - bill_number"
+  
+  - save(*args, **kwargs):
+    Purpose: Auto-calculate value and update bill totals
+    Logic:
+      1. Calculate value = weight × rate_per_gram
+      2. Save the old gold
+      3. Update bill's old_gold_weight (sum of all old gold weights)
+      4. Update bill's old_gold_value (sum of all old gold values)
+      5. Trigger bill.calculate_totals()
+
+Database Table: billing_oldgold
+
+
+4.6 PAYMENT MODEL
+-----------------
+Location: billing/models.py, lines 242-279
+
+Purpose: Tracks payments made against a bill
+
+PAYMENT METHOD CHOICES:
+  - 'cash': Cash
+  - 'card': Card
+  - 'upi': UPI
+  - 'bank_transfer': Bank Transfer
+  - 'cheque': Cheque
+
+Fields:
+  - bill (ForeignKey to Bill, CASCADE delete)
+    Purpose: Parent bill
+  - amount (DecimalField, max_digits=12, decimal_places=2)
+    Purpose: Payment amount
+    Validation: MinValueValidator(0.01)
+  - payment_method (CharField, max_length=20, choices=PAYMENT_METHOD_CHOICES, default='cash')
+    Purpose: Payment method used
+  - payment_date (DateTimeField, auto_now_add=True)
+    Purpose: Payment date/time
+  - notes (TextField, blank=True)
+    Purpose: Payment notes
+  - created_by (ForeignKey to User, SET_NULL)
+    Purpose: User who recorded the payment
+
+Relationships:
+  - Many-to-One with Bill (bill.payments)
+  - Many-to-One with User (created_by)
+
+Methods:
+  - __str__(): Returns "Payment of ₹amount for bill_number"
+  
+  - save(*args, **kwargs):
+    Purpose: Update bill's cash_received and totals
+    Logic:
+      1. Save the payment
+      2. Calculate total_payments = sum of all payments for the bill
+      3. Update bill.cash_received = total_payments
+      4. Trigger bill.calculate_totals() (updates balance and status)
+      5. Save bill with updated values
+
+Meta Options:
+  - ordering: ['-payment_date'] (newest first)
+
+Database Table: billing_payment
+
+
+MODEL RELATIONSHIPS DIAGRAM:
+-----------------------------
+User (Django built-in)
+  └── created_by → Bill (Many-to-One)
+  └── created_by → Payment (Many-to-One)
+  └── updated_by → GoldRate (Many-to-One)
+
+Customer
+  └── bills → Bill (One-to-Many)
+
+Bill
+  ├── items → BillItem (One-to-Many)
+  ├── old_gold_exchanges → OldGold (One-to-Many)
+  ├── payments → Payment (One-to-Many)
+  ├── customer → Customer (Many-to-One)
+  └── created_by → User (Many-to-One)
+
+================================================================================
+5. VIEWS & CONTROLLERS (DETAILED)
+================================================================================
+
+Location: billing/views.py
+
+5.1 AUTHENTICATION VIEWS
+-------------------------
+
+5.1.1 LoginView (Class-Based View)
+  Location: lines 30-46
+  Type: TemplateView
+  Template: billing/login.html
+  URL: /login/
+  Methods:
+    - get(request): 
+      Purpose: Display login form
+      Logic:
+        1. Check if user is authenticated
+        2. If yes, redirect to dashboard
+        3. Else, render login form
+    - post(request):
+      Purpose: Process login
+      Logic:
+        1. Validate LoginForm
+        2. If valid, authenticate and login user
+        3. Redirect to dashboard
+        4. Else, show form with errors
+
+5.1.2 logout_view (Function-Based View)
+  Location: lines 49-52
+  Type: Function
+  URL: /logout/
+  Decorator: @login_required
+  Purpose: Logout user and redirect to login
+  Logic:
+    1. Call Django's logout()
+    2. Redirect to login page
+
+5.2 DASHBOARD VIEW
+------------------
+5.2.1 DashboardView (Class-Based View)
+  Location: lines 55-88
+  Type: TemplateView
+  Template: billing/dashboard.html
+  URL: / (root)
+  Mixin: LoginRequiredMixin
+  Methods:
+    - get_context_data(**kwargs):
+      Purpose: Prepare dashboard statistics
+      Returns context with:
+        - today: Current date
+        - gold_rate: Current active gold rate
+        - today_bills: Bills created today
+        - today_total_sales: Sum of net_payable for today
+        - today_cash_received: Sum of cash_received for today
+        - cash_received_percentage: Percentage calculation
+        - today_old_gold: Old gold received today
+        - recent_bills: Last 10 bills
+        - total_customers: Customer count
+        - total_bills: Bill count
+        - unpaid_bills: Unpaid bills count
+
+5.3 GOLD RATE VIEWS
+-------------------
+5.3.1 update_gold_rate (Function-Based View)
+  Location: lines 156-177
+  Type: Function
+  URL: /gold-rate/update/
+  Decorator: @login_required
+  Methods: POST only
+  Purpose: Update current gold rate
+  Logic:
+    1. Get current active rate
+    2. Deactivate all existing rates
+    3. Create new rate with form data
+    4. Set updated_by to current user
+    5. Return JSON response with success/error
+
+5.4 CUSTOMER VIEWS
+------------------
+5.4.1 CustomerListView (Class-Based View)
+  Location: lines 180-195
+  Type: ListView
+  Template: billing/customer_list.html
+  URL: /customers/
+  Mixin: LoginRequiredMixin
+  Model: Customer
+  Context: customer_list (all customers)
+  Pagination: Not implemented (shows all)
+
+5.4.2 CustomerCreateView (Class-Based View)
+  Location: lines 198-202
+  Type: CreateView
+  Template: billing/customer_form.html
+  URL: /customers/create/
+  Mixin: LoginRequiredMixin
+  Model: Customer
+  Form: CustomerForm
+  Success URL: customer_list
+
+5.4.3 CustomerUpdateView (Class-Based View)
+  Location: lines 205-209
+  Type: UpdateView
+  Template: billing/customer_form.html
+  URL: /customers/<pk>/update/
+  Mixin: LoginRequiredMixin
+  Model: Customer
+  Form: CustomerForm
+  Success URL: customer_list
+
+5.4.4 CustomerDeleteView (Class-Based View)
+  Location: lines 212-216
+  Type: DeleteView
+  Template: billing/customer_confirm_delete.html
+  URL: /customers/<pk>/delete/
+  Mixin: LoginRequiredMixin
+  Model: Customer
+  Success URL: customer_list
+
+5.4.5 create_customer_ajax (Function-Based View)
+  Location: lines 456-500
+  Type: Function
+  URL: /api/create-customer/
+  Decorator: @login_required
+  Methods: POST only
+  Purpose: Create customer via AJAX (for bill form)
+  Logic:
+    1. Parse JSON request body
+    2. Validate name and phone (required)
+    3. Check for duplicate phone numbers
+    4. Create customer
+    5. Return JSON with customer data
+  Returns: JsonResponse with success/error
+
+5.5 BILL VIEWS
+--------------
+5.5.1 BillListView (Class-Based View)
+  Location: lines 185-222
+  Type: ListView
+  Template: billing/bill_list.html
+  URL: /bills/
+  Mixin: LoginRequiredMixin
+  Model: Bill
+  Methods:
+    - get_queryset():
+      Purpose: Filter bills based on search
+      Logic:
+        1. Get search query from GET parameters
+        2. Filter by bill_number or customer name
+        3. Return filtered queryset
+    - get_context_data(**kwargs):
+      Purpose: Add search form to context
+      Returns: bills (queryset), search_form
+
+5.5.2 bill_create (Function-Based View)
+  Location: lines 225-282
+  Type: Function
+  Template: billing/bill_create.html
+  URL: /bills/create/
+  Decorator: @login_required
+  Methods: GET, POST
+  Purpose: Create new bill with items and old gold
+  GET Logic:
+    1. Get current gold rate
+    2. Create empty BillForm
+    3. Render form with gold_rate and customers
+  POST Logic:
+    1. Validate BillForm
+    2. Create bill with created_by = current user
+    3. Parse items JSON from request
+    4. Create BillItem objects for each item
+    5. Parse old_gold JSON from request
+    6. Create OldGold objects
+    7. Recalculate totals
+    8. Validate cash_received <= net_payable
+    9. If validation fails, delete bill and show error
+    10. Save bill and redirect to bill_detail
+
+5.5.3 BillDetailView (Class-Based View)
+  Location: lines 278-325
+  Type: DetailView
+  Template: billing/bill_detail.html
+  URL: /bills/<pk>/
+  Mixin: LoginRequiredMixin
+  Model: Bill
+  Methods:
+    - get_context_data(**kwargs):
+      Purpose: Add payment form and subtotals
+      Logic:
+        1. Add PaymentForm to context
+        2. Recalculate items if needed
+        3. Calculate subtotals by item_type for print view
+        4. Return context with items_by_type
+
+5.5.4 bill_update (Function-Based View)
+  Location: lines 334-411
+  Type: Function
+  Template: billing/bill_update.html
+  URL: /bills/<pk>/update/
+  Decorator: @login_required
+  Methods: GET, POST
+  Purpose: Update existing bill
+  GET Logic:
+    1. Get bill and create BillForm with instance
+    2. Recalculate items if needed
+    3. If payments exist, set cash_received = sum of payments
+    4. Pre-populate form with correct cash_received
+    5. Render update form
+  POST Logic:
+    1. Validate BillForm
+    2. Save bill (commit=False)
+    3. Check if payments exist
+    4. Store original cash_received (from payments or form)
+    5. Delete existing items
+    6. Create new items from JSON
+    7. Delete existing old gold
+    8. Create new old gold from JSON
+    9. Recalculate totals
+    10. Set cash_received correctly
+    11. Validate cash_received <= net_payable
+    12. If validation fails, show error
+    13. Save and redirect to bill_detail
+
+5.5.5 bill_delete (Function-Based View)
+  Location: lines 405-411
+  Type: Function
+  Template: billing/bill_confirm_delete.html
+  URL: /bills/<pk>/delete/
+  Decorator: @login_required
+  Methods: GET, POST
+  Purpose: Delete bill
+  POST Logic:
+    1. Delete bill (cascades to items, old gold, payments)
+    2. Redirect to bill_list
+
+5.5.6 bill_print (Function-Based View)
+  Location: lines 437-465
+  Type: Function
+  Template: billing/bill_print.html
+  URL: /bills/<pk>/print/
+  Decorator: @login_required
+  Methods: GET
+  Purpose: Display print-friendly bill
+  Logic:
+    1. Get bill
+    2. Recalculate items if needed
+    3. Calculate subtotals by item_type
+    4. Render print template with items_by_type
+  Template Features:
+    - Print-specific CSS (@media print)
+    - 16cm × 11cm page size
+    - Customer name (left-aligned)
+    - Item table with all columns
+    - Payment and balance sections
+
+5.5.7 bill_pdf (Function-Based View)
+  Location: lines 468-502
+  Type: Function
+  Template: billing/bill_pdf.html
+  URL: /bills/<pk>/pdf/
+  Decorator: @login_required
+  Methods: GET
+  Purpose: Generate PDF of bill
+  Logic:
+    1. Check if WeasyPrint is available
+    2. If not, return error message
+    3. Recalculate items if needed
+    4. Calculate subtotals by item_type
+    5. Render PDF template
+    6. Generate PDF using WeasyPrint
+    7. Return PDF as HTTP response
+  Returns: HttpResponse with PDF content
+  Content-Type: application/pdf
+  Filename: bill_{bill_number}.pdf
+
+5.5.8 bill_email (Function-Based View)
+  Location: lines 505-550
+  Type: Function
+  URL: /bills/<pk>/email/
+  Decorator: @login_required
+  Methods: POST (AJAX)
+  Purpose: Email bill as PDF
+  Logic:
+    1. Check if customer has email
+    2. Check if WeasyPrint is available
+    3. Recalculate items if needed
+    4. Calculate subtotals
+    5. Generate PDF
+    6. Create EmailMessage
+    7. Attach PDF
+    8. Send email
+    9. Return JSON response
+  Returns: JsonResponse with success/error
+
+5.5.9 add_payment (Function-Based View)
+  Location: lines 414-434
+  Type: Function
+  URL: /bills/<bill_id>/payment/
+  Decorator: @login_required
+  Methods: POST
+  Purpose: Add payment to bill
+  Logic:
+    1. Get bill
+    2. Validate PaymentForm (with bill instance)
+    3. Create payment with created_by = current user
+    4. Payment.save() automatically updates bill
+    5. Refresh bill from DB to get updated values
+    6. Redirect to bill_detail
+  Note: Payment.save() handles updating cash_received and totals
+
+5.6 REPORTS VIEW
+----------------
+5.6.1 ReportsView (Class-Based View)
+  Location: lines 563-595
+  Type: TemplateView
+  Template: billing/reports.html
+  URL: /reports/
+  Mixin: LoginRequiredMixin
+  Methods:
+    - get_context_data(**kwargs):
+      Purpose: Generate sales reports
+      Logic:
+        1. Get date_from and date_to from GET parameters
+        2. If dates provided, filter bills by date range
+        3. Else, default to current month
+        4. Calculate:
+           - total_sales: Sum of net_payable
+           - total_cash: Sum of cash_received
+           - total_outstanding: Sum of balance for unpaid/partial bills
+           - bill_count: Number of bills
+        5. Return context with bills and statistics
+
+================================================================================
+6. FORMS (DETAILED)
+================================================================================
+
+Location: billing/forms.py
+
+6.1 LOGINFORM
+-------------
+Location: lines 9-26
+Base: AuthenticationForm (Django built-in)
+Purpose: User authentication
+Fields:
+  - username: TextInput with placeholder
+  - password: PasswordInput with placeholder
+Layout: Crispy Forms layout with submit button
+
+6.2 CUSTOMERFORM
+----------------
+Location: lines 28-52
+Base: ModelForm
+Model: Customer
+Fields: name, phone, email, address
+Widgets:
+  - All fields: form-control class
+  - address: Textarea with 3 rows
+Layout: Crispy Forms with Row/Column layout
+
+6.3 GOLDRATEFORM
+----------------
+Location: lines 54-73
+Base: ModelForm
+Model: GoldRate
+Fields: rate_24k
+Widgets:
+  - rate_24k: NumberInput with step=0.01, min=0.01
+Layout: Crispy Forms with submit button
+
+6.4 BILLITEMFORM
+----------------
+Location: lines 76-109
+Base: ModelForm
+Model: BillItem
+Fields: description, item_code, net_weight, tunch_wstg, rate, labour
+Widgets:
+  - All fields: form-control class
+  - net_weight: step=0.001, min=0.001
+  - tunch_wstg: step=0.01, min=0.01, max=100
+  - rate: step=0.01, min=0.01
+  - labour: step=0.01, min=0, value=0.00
+Purpose: Used in admin, not in main forms (items handled via JSON)
+
+6.5 OLDGOLDFORM
+---------------
+Location: lines 111-141
+Base: ModelForm
+Model: OldGold
+Fields: weight, rate_per_gram, description
+Widgets:
+  - weight: step=0.001, min=0.001
+  - rate_per_gram: step=0.01, min=0.01
+Layout: Crispy Forms with Row/Column layout
+Purpose: Used in admin, not in main forms (handled via JSON)
+
+6.6 BILLFORM
+------------
+Location: lines 143-185
+Base: ModelForm
+Model: Bill
+Fields: customer, cgst_percent, sgst_percent, cash_received, notes
+Custom Fields:
+  - customer: ModelChoiceField with Select widget
+    Purpose: Customer selection dropdown
+Widgets:
+  - cgst_percent: NumberInput, step=0.01, value=1.50
+  - sgst_percent: NumberInput, step=0.01, value=1.50
+  - cash_received: NumberInput, step=0.01, min=0
+  - notes: Textarea, rows=3
+Methods:
+  - __init__(*args, **kwargs):
+    Purpose: Pre-populate cash_received if payments exist
+    Logic:
+      1. If instance exists and has payments
+      2. Set initial['cash_received'] = sum of payments
+  - clean_cash_received():
+    Purpose: Validate cash_received
+    Logic:
+      1. Check if cash_received < 0
+      2. Raise ValidationError if negative
+    Note: Full validation (cash_received <= net_payable) done in view
+Layout: Crispy Forms layout
+
+6.7 PAYMENTFORM
+---------------
+Location: lines 187-214
+Base: ModelForm
+Model: Payment
+Fields: amount, payment_method, notes
+Widgets:
+  - amount: NumberInput, step=0.01, min=0.01
+  - payment_method: Select
+  - notes: Textarea, rows=2
+Methods:
+  - __init__(*args, **kwargs):
+    Purpose: Accept bill instance for validation
+    Logic:
+      1. Pop 'bill' from kwargs
+      2. Store as self.bill
+  - clean_amount():
+    Purpose: Validate payment amount
+    Logic:
+      1. Get amount from cleaned_data
+      2. If bill exists:
+         - Calculate remaining_balance = net_payable - cash_received
+         - If amount > remaining_balance, raise ValidationError
+      3. If amount <= 0, raise ValidationError
+      4. Return amount
+Layout: Crispy Forms with Row/Column layout
+
+6.8 BILLSEARCHFORM
+------------------
+Location: lines 215-244
+Base: Form (not ModelForm)
+Purpose: Bill search functionality
+Fields:
+  - search: CharField (optional)
+    Widget: TextInput with placeholder "Search by bill number or customer..."
+Layout: Not used (handled in view)
+
+================================================================================
+7. TEMPLATES (DETAILED)
+================================================================================
+
+7.1 BASE TEMPLATE
+-----------------
+Location: templates/base.html
+Purpose: Base layout for all pages
+Features:
+  - Bootstrap 5 CSS and JS
+  - Font Awesome icons
+  - Navigation bar with:
+    - Dashboard link
+    - Customers menu
+    - Bills menu
+    - Reports link
+    - User menu (logout)
+  - Content block for page content
+  - Extra CSS block
+  - Extra JS block
+  - Responsive design
+
+7.2 AUTHENTICATION TEMPLATES
+-----------------------------
+7.2.1 login.html
+  Location: templates/billing/login.html
+  Purpose: User login page
+  Features:
+    - Login form (Crispy Forms)
+    - Error message display
+    - Redirect to dashboard on success
+
+7.3 DASHBOARD TEMPLATE
+---------------------
+7.3.1 dashboard.html
+  Location: templates/billing/dashboard.html
+  Purpose: Main dashboard/home page
+  Features:
+    - Gold rate display and update form
+    - Today's statistics:
+      - Total sales
+      - Cash received
+      - Cash received percentage
+      - Old gold received
+    - Recent bills table
+    - Quick actions
+    - Customer and bill counts
+
+7.4 CUSTOMER TEMPLATES
+----------------------
+7.4.1 customer_list.html
+  Location: templates/billing/customer_list.html
+  Purpose: List all customers
+  Features:
+    - Search functionality
+    - Customer table with:
+      - Name, Phone, Email
+      - Actions (Edit, Delete)
+    - "New Customer" button
+
+7.4.2 customer_form.html
+  Location: templates/billing/customer_form.html
+  Purpose: Create/update customer
+  Features:
+    - Customer form (Crispy Forms)
+    - Save and Cancel buttons
+    - Form validation
+
+7.4.3 customer_confirm_delete.html
+  Location: templates/billing/customer_confirm_delete.html
+  Purpose: Confirm customer deletion
+  Features:
+    - Confirmation message
+    - Delete and Cancel buttons
+
+7.5 BILL TEMPLATES
+------------------
+7.5.1 bill_list.html
+  Location: templates/billing/bill_list.html
+  Purpose: List all bills
+  Features:
+    - Search form
+    - Bill table with:
+      - Bill number, Customer, Date
+      - Net Payable, Status
+      - Actions (View, Edit, Delete)
+    - Status badges (colored)
+    - "New Bill" button
+
+7.5.2 bill_create.html
+  Location: templates/billing/bill_create.html
+  Purpose: Create new bill
+  Features:
+    - Left panel: Bill information form
+      - Customer dropdown with "New" button
+      - CGST/SGST percentages
+      - Cash received
+      - Notes
+    - Right panel: Bill items
+      - Add Item button
+      - Items table with columns:
+        - Type / Particulars
+        - Net.Wt
+        - Tunch wstg
+        - Labour
+        - Rate
+        - SFine
+        - GFine
+        - Amount
+        - Action (Remove)
+      - Totals row
+    - Old Gold Exchange section
+      - Weight, Rate, Description inputs
+      - Add Old Gold button
+      - Old gold list display
+    - Payment Summary section
+      - Gross Amount
+      - Old Gold Value
+      - CGST, SGST
+      - Net Payable
+      - Cash Received
+      - Balance
+    - Create Customer Modal
+      - AJAX form to create customer without page reload
+      - Auto-selects new customer after creation
+    - JavaScript: bill_create.js handles all interactions
+
+7.5.3 bill_update.html
+  Location: templates/billing/bill_update.html
+  Purpose: Update existing bill
+  Features:
+    - Similar to bill_create.html
+    - Pre-populated with existing data
+    - JavaScript loads existing items and old gold
+    - Update Bill button
+
+7.5.4 bill_detail.html
+  Location: templates/billing/bill_detail.html
+  Purpose: View bill details
+  Features:
+    - Left panel: Bill details
+      - Customer information
+      - Bill metadata (date, status)
+      - Items table with all columns
+      - Payment summary
+    - Right panel: Payment management
+      - Add Payment form
+      - Payment History list
+    - Action buttons:
+      - Print
+      - PDF
+      - Email
+      - Edit
+      - Delete
+
+7.5.5 bill_print.html
+  Location: templates/billing/bill_print.html
+  Purpose: Print-friendly bill layout
+  Features:
+    - Print-specific CSS (@media print)
+    - Page size: 16cm × 11cm
+    - Header:
+      - Date/time and reference number (top)
+      - "ॐ नमः शिवाय" (centered)
+      - "ROUGH ESTIMATE" (centered)
+      - Customer name (left-aligned)
+    - Items table:
+      - Columns: Type, Particulars, Net.Wt, Tunch wstg, Labour, Rate, SFine, GFine, Amount
+      - Subtotals by item type (GWt and GFine)
+    - Payment section:
+      - Receipt By CASH
+      - LB: (date and amounts)
+    - Balance section:
+      - CI Balance (Gold, Dr, Cr)
+    - Footer: "HAVE A NICE DAY"
+    - Print button (hidden when printing)
+
+7.5.6 bill_pdf.html
+  Location: templates/billing/bill_pdf.html
+  Purpose: PDF generation template
+  Features:
+    - Identical to bill_print.html
+    - Standalone HTML (no extends)
+    - WeasyPrint-compatible CSS
+    - Same layout and content
+
+7.5.7 bill_confirm_delete.html
+  Location: templates/billing/bill_confirm_delete.html
+  Purpose: Confirm bill deletion
+  Features:
+    - Confirmation message
+    - Delete and Cancel buttons
+
+7.6 REPORTS TEMPLATE
+--------------------
+7.6.1 reports.html
+  Location: templates/billing/reports.html
+  Purpose: Sales reports
+  Features:
+    - Date range filter
+    - Statistics display:
+      - Total Sales
+      - Total Cash Received
+      - Total Outstanding
+      - Bill Count
+    - Bills table with filtered results
+
+================================================================================
+8. JAVASCRIPT FILES (DETAILED)
+================================================================================
+
+8.1 MAIN.JS
+-----------
+Location: static/js/main.js
+Purpose: General JavaScript utilities
+
+Functions:
+  - updateDateTime():
+    Purpose: Update current date/time display
+    Logic:
+      1. Get current date/time
+      2. Format and display in element with id 'current-datetime'
+    Called: On page load and every second
+
+  - updateGoldRate():
+    Purpose: Update gold rate display
+    Logic:
+      1. Fetch current gold rate via AJAX
+      2. Update display element
+    Called: On page load
+
+Usage: Included in base.html, runs on all pages
+
+8.2 BILL_CREATE.JS
+------------------
+Location: static/js/bill_create.js
+Purpose: Bill creation and update form interactions
+
+Global Variables:
+  - items: Array of bill items
+  - oldGoldItems: Array of old gold entries
+
+Functions:
+
+  - addItem(itemData = null):
+    Purpose: Add new item row to items table
+    Parameters:
+      - itemData: Optional object with item data (for loading existing items)
+    Logic:
+      1. Get items table body
+      2. Create new table row
+      3. Get default gold rate
+      4. Build row HTML with input fields:
+         - Type dropdown (S/REC)
+         - Description
+         - Item Code
+         - Item Number
+         - Net Weight
+         - Tunch wstg
+         - Labour
+         - Rate
+         - SFine (calculated, display only)
+         - GFine (calculated, display only)
+         - Amount (calculated, display only)
+         - Remove button
+      5. Append row to table
+      6. Trigger calculations
+      7. Update totals
+    Called: When "Add Item" button clicked, or when loading existing items
+
+  - removeItem(button):
+    Purpose: Remove item row from table
+    Logic:
+      1. Get parent row
+      2. Remove from DOM
+      3. Update totals
+
+  - updateItem(input, field):
+    Purpose: Update item data when input changes
+    Parameters:
+      - input: Input element that changed
+      - field: Field name being updated
+    Logic:
+      1. Get parent row
+      2. Get row index
+      3. Update items array
+      4. Trigger calculations for that row
+      5. Update totals
+
+  - updateItemCalculations(row):
+    Purpose: Calculate SFine, GFine, and Amount for an item row
+    Logic:
+      1. Get values from row inputs:
+         - netWeight
+         - tunchWstg
+         - rate
+         - labour
+      2. Calculate GFine = (netWeight × tunchWstg) / 100
+      3. Calculate SFine = GFine (same for now)
+      4. Calculate goldAmount = GFine × rate
+      5. Calculate amount = goldAmount + labour
+      6. Update display cells
+      7. Update items array
+    Called: When item inputs change, or when row is added
+
+  - addOldGold():
+    Purpose: Add old gold entry
+    Logic:
+      1. Get values from old gold inputs
+      2. Calculate value = weight × rate
+      3. Add to oldGoldItems array
+      4. Display in old gold list
+      5. Clear inputs
+      6. Update totals
+
+  - removeOldGold(button):
+    Purpose: Remove old gold entry
+    Logic:
+      1. Get parent element
+      2. Remove from DOM
+      3. Remove from oldGoldItems array
+      4. Update totals
+
+  - calculateFineGold(netWeight, tunch):
+    Purpose: Calculate fine gold
+    Formula: (netWeight × tunch) / 100
+    Returns: Fine gold value
+
+  - calculateAmount(fineGold, rate):
+    Purpose: Calculate gold amount
+    Formula: fineGold × rate
+    Returns: Amount value
+
+  - formatCurrency(amount):
+    Purpose: Format number as currency
+    Format: ₹ 1,234.56
+    Returns: Formatted string
+
+  - updateTotals():
+    Purpose: Calculate and display all bill totals
+    Logic:
+      1. Initialize totals (fineGold, amount) to 0
+      2. Loop through all item rows:
+         - Get values from inputs
+         - Calculate GFine, SFine, amount
+         - Add to totals
+         - Push to items array
+      3. Calculate old gold total value
+      4. Calculate taxable amount = totalAmount - oldGoldValue
+      5. Get CGST and SGST percentages
+      6. Calculate CGST = (taxableAmount × cgstPercent) / 100
+      7. Calculate SGST = (taxableAmount × sgstPercent) / 100
+      8. Calculate netPayable = totalAmount + cgstAmount + sgstAmount - oldGoldValue
+      9. Update display elements:
+         - Total SFine
+         - Total GFine
+         - Total Amount
+         - Summary section values
+      10. Validate cash_received:
+          - If cash_received > netPayable:
+            - Set custom validity error
+            - Add 'is-invalid' class
+          - Else:
+            - Clear validity
+            - Remove 'is-invalid' class
+    Called: When items change, taxes change, or cash_received changes
+
+  - addItemRow(itemData):
+    Purpose: Helper function for update page
+    Logic: Calls addItem() with itemData
+    Used: When loading existing items in bill_update.html
+
+Event Listeners (DOMContentLoaded):
+  - Form submit handler:
+    Purpose: Validate and prepare form data before submission
+    Logic:
+      1. Calculate totals first
+      2. Get netPayable from summary
+      3. Validate cash_received <= netPayable
+      4. If invalid, prevent submission and show alert
+      5. Serialize items and oldGoldItems to JSON
+      6. Set hidden input values
+  - Tax field change listeners:
+    - CGST percent: Calls updateTotals()
+    - SGST percent: Calls updateTotals()
+  - Cash received field listeners:
+    - input event: Calls updateTotals()
+    - change event: Calls updateTotals()
+
+================================================================================
+9. URL ROUTING
+================================================================================
+
+Location: billing/urls.py
+
+URL PATTERNS:
+-------------
+
+Authentication:
+  - /login/ → LoginView.as_view() → name='login'
+  - /logout/ → logout_view → name='logout'
+
+Dashboard:
+  - / → DashboardView.as_view() → name='dashboard'
+
+Gold Rate:
+  - /gold-rate/update/ → update_gold_rate → name='update_gold_rate'
+
+Customers:
+  - /customers/ → CustomerListView.as_view() → name='customer_list'
+  - /customers/create/ → CustomerCreateView.as_view() → name='customer_create'
+  - /customers/<pk>/update/ → CustomerUpdateView.as_view() → name='customer_update'
+  - /customers/<pk>/delete/ → CustomerDeleteView.as_view() → name='customer_delete'
+
+Bills:
+  - /bills/ → BillListView.as_view() → name='bill_list'
+  - /bills/create/ → bill_create → name='bill_create'
+  - /bills/<pk>/ → BillDetailView.as_view() → name='bill_detail'
+  - /bills/<pk>/update/ → bill_update → name='bill_update'
+  - /bills/<pk>/delete/ → bill_delete → name='bill_delete'
+  - /bills/<pk>/print/ → bill_print → name='bill_print'
+  - /bills/<pk>/pdf/ → bill_pdf → name='bill_pdf'
+  - /bills/<pk>/email/ → bill_email → name='bill_email'
+  - /bills/<bill_id>/payment/ → add_payment → name='add_payment'
+
+Reports:
+  - /reports/ → ReportsView.as_view() → name='reports'
+
+API Endpoints:
+  - /api/create-customer/ → create_customer_ajax → name='create_customer_ajax'
+
+ROOT URL CONFIGURATION:
+-----------------------
+Location: jewellery_billing/urls.py
+Includes: billing.urls with prefix ''
+
+================================================================================
+10. BUSINESS LOGIC & CALCULATIONS
+================================================================================
+
+10.1 BILL ITEM CALCULATIONS
+----------------------------
+
+GFine (Gold Fine) Calculation:
+  Formula: GFine = (Net Weight × Tunch Wstg) / 100
+  Example:
+    Net Weight = 3.000 gm
+    Tunch Wstg = 91.60%
+    GFine = (3.000 × 91.60) / 100 = 2.748 gm
+
+SFine (Silver Fine) Calculation:
+  Currently: SFine = GFine
+  (Can be customized for different business logic)
+
+Item Amount Calculation:
+  Formula: Amount = (GFine × Rate) + Labour
+  Example:
+    GFine = 2.748 gm
+    Rate = ₹150,000.00 per gram
+    Labour = ₹0.00
+    Amount = (2.748 × 150,000) + 0 = ₹412,200.00
+
+10.2 BILL TOTALS CALCULATION
+-----------------------------
+
+Total Fine Gold:
+  Formula: Sum of all items' GFine
+  Calculation: total_fine_gold = sum(item.g_fine for item in items)
+
+Total Amount:
+  Formula: Sum of all items' Amount
+  Calculation: total_amount = sum(item.amount for item in items)
+
+Taxable Amount:
+  Formula: Taxable Amount = Total Amount - Old Gold Value
+  Calculation: taxable_amount = total_amount - old_gold_value
+
+CGST Amount:
+  Formula: CGST = (Taxable Amount × CGST Percent) / 100
+  Default: 1.50%
+  Calculation: cgst_amount = (taxable_amount × cgst_percent) / 100
+
+SGST Amount:
+  Formula: SGST = (Taxable Amount × SGST Percent) / 100
+  Default: 1.50%
+  Calculation: sgst_amount = (taxable_amount × sgst_percent) / 100
+
+Net Payable:
+  Formula: Net Payable = Total Amount + CGST + SGST - Old Gold Value
+  Calculation: net_payable = total_amount + cgst_amount + sgst_amount - old_gold_value
+
+10.3 OLD GOLD CALCULATION
+--------------------------
+
+Old Gold Value:
+  Formula: Value = Weight × Rate per Gram
+  Calculation: value = weight × rate_per_gram
+
+Total Old Gold Weight:
+  Formula: Sum of all old gold weights
+  Calculation: total_old_gold = sum(og.weight for og in old_gold_exchanges)
+
+Total Old Gold Value:
+  Formula: Sum of all old gold values
+  Calculation: total_old_gold_value = sum(og.value for og in old_gold_exchanges)
+
+10.4 PAYMENT & BALANCE CALCULATION
+-----------------------------------
+
+Cash Received:
+  Formula: Sum of all payments
+  Calculation: cash_received = sum(payment.amount for payment in payments)
+  Note: Auto-calculated from Payment objects, not from form
+
+Balance:
+  Formula: Balance = Net Payable - Cash Received
+  Calculation: balance = net_payable - cash_received
+  Can be negative (overpayment) or positive (outstanding)
+
+Bill Status:
+  Logic:
+    - If balance <= 0: status = 'paid'
+    - Else if cash_received > 0: status = 'partial'
+    - Else: status = 'unpaid'
+
+10.5 BILL NUMBER GENERATION
+---------------------------
+
+Format: JBYYYYMMDD-XXX
+Example: JB20251216-001
+
+Logic:
+  1. Get current date: YYYYMMDD
+  2. Find last bill with same date prefix
+  3. Extract sequence number
+  4. Increment by 1
+  5. Format as 3-digit number (001, 002, etc.)
+  6. Combine: JB + date + "-" + sequence
+
+================================================================================
+11. WORKFLOWS & USER FLOWS
+================================================================================
+
+11.1 USER AUTHENTICATION FLOW
+------------------------------
+
+1. User visits application
+2. Redirected to /login/ if not authenticated
+3. User enters username and password
+4. Form submitted to LoginView.post()
+5. Django authenticates user
+6. If valid: login() called, redirect to dashboard
+7. If invalid: Show error, stay on login page
+
+11.2 BILL CREATION FLOW
+-----------------------
+
+1. User clicks "New Bill" from dashboard or menu
+2. GET /bills/create/ → bill_create view
+3. View renders bill_create.html with:
+   - Empty BillForm
+   - Current gold rate
+   - List of customers
+4. User selects customer (or creates new via modal)
+5. User clicks "Add Item"
+6. JavaScript adds item row to table
+7. User fills item details:
+   - Type (S or REC)
+   - Description
+   - Item Code (optional)
+   - Item Number (optional)
+   - Net Weight
+   - Tunch wstg
+   - Labour
+   - Rate
+8. JavaScript calculates:
+   - GFine = (Net Weight × Tunch wstg) / 100
+   - SFine = GFine
+   - Amount = (GFine × Rate) + Labour
+9. User adds more items (repeat steps 5-8)
+10. User adds old gold (optional):
+    - Enter weight, rate, description
+    - Click "Add Old Gold"
+    - JavaScript calculates value and updates totals
+11. User adjusts tax percentages if needed
+12. User enters cash received
+13. JavaScript validates cash_received <= net_payable
+14. User clicks "Create Bill"
+15. Form submitted to POST /bills/create/
+16. View processes:
+    a. Validates BillForm
+    b. Creates Bill object
+    c. Parses items JSON, creates BillItem objects
+    d. Parses old_gold JSON, creates OldGold objects
+    e. Recalculates totals
+    f. Validates cash_received
+    g. Saves bill
+17. Redirect to bill_detail page
+
+11.3 PAYMENT ADDITION FLOW
+--------------------------
+
+1. User views bill detail page
+2. User sees "Add Payment" form on right panel
+3. User enters:
+   - Amount
+   - Payment method
+   - Notes (optional)
+4. User clicks "Add Payment"
+5. Form submitted to POST /bills/<bill_id>/payment/
+6. View processes:
+    a. Validates PaymentForm (checks remaining balance)
+    b. Creates Payment object
+    c. Payment.save() automatically:
+       - Calculates total_payments
+       - Updates bill.cash_received
+       - Triggers bill.calculate_totals()
+       - Updates bill.balance and bill.status
+    d. Saves payment
+7. Redirect to bill_detail page (refreshed with new payment)
+
+11.4 BILL UPDATE FLOW
+---------------------
+
+1. User clicks "Edit" on bill detail page
+2. GET /bills/<pk>/update/ → bill_update view
+3. View loads:
+   - Bill object
+   - BillForm with instance
+   - Existing items (loaded via JavaScript)
+   - Existing old gold (loaded via JavaScript)
+   - If payments exist: cash_received = sum of payments
+4. User modifies items, old gold, or bill details
+5. JavaScript recalculates totals in real-time
+6. User clicks "Update Bill"
+7. Form submitted to POST /bills/<pk>/update/
+8. View processes:
+    a. Validates BillForm
+    b. Saves bill (preserves cash_received if payments exist)
+    c. Deletes existing items
+    d. Creates new items from JSON
+    e. Deletes existing old gold
+    f. Creates new old gold from JSON
+    g. Recalculates totals
+    h. Sets cash_received correctly
+    i. Validates cash_received
+    j. Saves bill
+9. Redirect to bill_detail page
+
+11.5 BILL PRINT/PDF FLOW
+------------------------
+
+Print Flow:
+1. User clicks "Print" on bill detail page
+2. GET /bills/<pk>/print/ → bill_print view
+3. View:
+   - Recalculates items if needed
+   - Calculates subtotals by item_type
+   - Renders bill_print.html
+4. Browser shows print preview
+5. User prints (Ctrl+P or print button)
+
+PDF Flow:
+1. User clicks "PDF" on bill detail page
+2. GET /bills/<pk>/pdf/ → bill_pdf view
+3. View:
+   - Checks WeasyPrint availability
+   - Recalculates items if needed
+   - Calculates subtotals
+   - Renders bill_pdf.html
+   - Generates PDF using WeasyPrint
+4. Browser downloads PDF file

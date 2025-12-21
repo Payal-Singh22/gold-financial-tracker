@@ -1,0 +1,282 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Print Bill {{ bill.bill_number }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    @media print {
+        body * {
+            visibility: hidden;
+        }
+        #bill-print, #bill-print * {
+            visibility: visible;
+        }
+        #bill-print {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+        }
+        .no-print {
+            display: none;
+        }
+        @page {
+            size: 11cm 16cm;
+            margin: 0.05cm;
+        }
+    }
+    #bill-print {
+        width: 11cm;
+        min-height: 16cm;
+        margin: 0 auto ;
+        background: #FFFFF0;
+        padding: 12px;
+        font-family: 'Times New Roman', serif;
+        color: #000;
+        font-size: 10px;
+        box-sizing: border-box;
+    }
+
+    @media print {
+    html, body {
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 11cm;
+        height: 16cm;
+        background: #FFFFF0;
+    }
+}
+
+    .bill-header-top {
+        display: flex;
+         justify-content: flex-end;   /* RIGHT CORNER */
+        /* justify-content: space-between; */
+        align-items: start;
+        margin-bottom: 6px;
+        font-size: 9px;
+        
+    }
+    .bill-header-center {
+        text-align: center;
+        margin: 8px 0;
+    }
+    .bill-header-center .om-text {
+        font-size: 12px;
+        margin: 2px 0;
+        font-weight: bold;
+    }
+    .bill-header-center .title {
+        font-size: 14px;
+        font-weight: bold;
+        margin: 3px 0;
+        letter-spacing: 0.5px;
+    }
+    .customer-name {
+        text-align: left;
+        font-size: 13px;
+        font-weight: bold;
+        margin-top: 6px;
+        margin-bottom: 6px;
+    }
+    .bill-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 6px 0;
+        font-size: 9px;
+    }
+    .bill-table th {
+        border: 1px solid #000;
+        padding: 2px 1px;
+        text-align: center;
+        font-weight: bold;
+        background: #f0f0f0;
+        font-size: 8px;
+    }
+    .bill-table td {
+        border: 1px solid #000;
+        padding: 2px 1px;
+        text-align: center;
+        font-size: 8px;
+    }
+    .bill-table td.text-left {
+        text-align: left;
+        padding-left: 3px;
+    }
+    .bill-table td.text-right {
+        text-align: right;
+        padding-right: 3px;
+    }
+    .subtotal-row {
+        font-weight: bold;
+        background: #f5f5f5;
+        font-size: 8px;
+    }
+    .payment-section {
+        margin-top: 8px;
+        font-size: 9px;
+    }
+    .payment-line {
+        display: flex;
+        justify-content: space-between;
+        margin: 1px 0;
+    }
+    .payment-section hr {
+        margin: 4px 0;
+        border: none;
+        border-top: 1px solid #000;
+    }
+    .balance-section {
+        margin-top: 6px;
+        font-size: 9px;
+    }
+    .balance-line {
+        margin: 1px 0;
+    }
+    .footer {
+        text-align: center;
+        margin-top: 10px;
+        font-size: 10px;
+        font-weight: bold;
+    }
+
+
+    #bill-print {
+    position: relative;
+    overflow: hidden;
+}
+
+/* Watermark */
+#bill-print::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 300px;
+    height: 300px;
+    background: url("/static/images/watermark.jpeg") no-repeat center;
+    background-size: contain;
+    opacity: 0.08;
+    transform: translate(-50%, -50%);
+    z-index: 0;
+}
+
+/* Keep bill content above watermark */
+#bill-print > * {
+    position: relative;
+    z-index: 1;
+}
+
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="text-center mb-3 no-print">
+        <button onclick="window.print()" class="btn btn-primary">
+            <i class="fas fa-print me-1"></i>Print
+        </button>
+        <a href="{% url 'bill_detail' bill.pk %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-1"></i>Back
+        </a>
+    </div>
+
+    <div id="bill-print">
+        <!-- Header Top: Date/Time and Reference -->
+        <div class="bill-header-top">
+            <!-- <div>{{ bill.bill_date|date:"d/m/Y g:i a" }}</div> -->
+            <div>E/{{ bill.bill_number|slice:"-4:"|default:"0006" }}</div>
+        </div>
+
+        <!-- Header Center -->
+        <div class="bill-header-center">
+            <div class="om-text">ॐ नमः शिवाय</div>
+            <!-- <div class="title">KL JEWELLERS</div> -->
+            <div class="om-text">ROUGH ESTIMATE</div>
+        </div>
+
+        <!-- Customer Name (Left Aligned) -->
+        <div class="customer-name">
+            {{ bill.customer.name|upper }}
+        </div>
+
+        <!-- Items Table -->
+        <table class="bill-table">
+            <thead>
+                <tr>
+                    <th>Type</th>
+                    <th>Particulars</th>
+                    <th>Net.Wt</th>
+                    <th>Tunch wstg</th>
+                    <th>Labour</th>
+                    <th>Rate</th>
+                    <th>SFine</th>
+                    <th>GFine</th>
+                    <th>Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item_type, type_data in items_by_type.items %}
+                    {% for item in type_data.items %}
+                    <tr>
+                        <td>{{ item.get_item_type_display|slice:":1" }}</td>
+                        <td class="text-left">
+                            {{ item.description }}{% if item.item_number %} {{ item.item_number }}{% endif %}
+                        </td>
+                        <td class="text-right">{{ item.net_weight|floatformat:3 }}</td>
+                        <td class="text-right">{{ item.tunch_wstg|floatformat:2 }}</td>
+                        <td class="text-right">{{ item.labour|floatformat:2 }}</td>
+                        <td class="text-right">{{ item.rate|floatformat:2 }}</td>
+                        <td class="text-right">{{ item.s_fine|floatformat:3 }}</td>
+                        <td class="text-right">{{ item.g_fine|floatformat:3 }}</td>
+                        <td class="text-right">{{ item.amount|floatformat:2 }}</td>
+                    </tr>
+                    {% endfor %}
+                    <tr class="subtotal-row">
+                        <td colspan="2" class="text-left">
+                            GWt: {{ type_data.total_weight|floatformat:3 }}
+                        </td>
+                        <td class="text-right">{{ type_data.total_weight|floatformat:3 }}</td>
+                        <td colspan="4"></td>
+                        <td class="text-right">{{ type_data.total_gfine|floatformat:3 }}</td>
+                        <td></td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <!-- Payment Section -->
+        <div class="payment-section">
+            <div class="payment-line">
+                <span>Receipt By CASH</span>
+                <span>-{{ bill.cash_received|floatformat:0 }}</span>
+            </div>
+            <div class="payment-line">
+                <span>-{{ bill.cash_received|floatformat:0 }}</span>
+            </div>
+            <hr>
+            <div class="payment-line">
+                <span>LB: {{ bill.bill_date|date:"d/m/Y" }}</span>
+                <span>{{ bill.total_fine_gold|floatformat:3 }} {{ bill.net_payable|floatformat:0 }}</span>
+            </div>
+        </div>
+
+        <!-- Balance Section -->
+        <div class="balance-section">
+            <div class="balance-line">
+                <strong>CI Balance:</strong>
+            </div>
+            <div class="balance-line">
+                Gold: {{ bill.ci_balance_gold|floatformat:3 }} 
+                <span style="margin-left: 10px;">Dr {{ bill.ci_balance_dr|floatformat:2 }}</span>
+                <span style="margin-left: 10px;">Cr {{ bill.ci_balance_cr|floatformat:2 }}</span>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            HAVE A NICE DAY
+        </div>
+    </div>
+</div>
+{% endblock %}

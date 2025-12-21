@@ -1,0 +1,237 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Bill {{ bill.bill_number }} - Jewellery Billing System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h2><i class="fas fa-file-invoice me-2"></i>Bill {{ bill.bill_number }}</h2>
+                <div>
+                    <a href="{% url 'bill_print' bill.pk %}" class="btn btn-primary" target="_blank">
+                        <i class="fas fa-print me-1"></i>Print
+                    </a>
+                    <a href="{% url 'bill_pdf' bill.pk %}" class="btn btn-danger">
+                        <i class="fas fa-file-pdf me-1"></i>PDF
+                    </a>
+                    <button onclick="emailBill({{ bill.pk }})" class="btn btn-info">
+                        <i class="fas fa-envelope me-1"></i>Email
+                    </button>
+                    <a href="{% url 'bill_update' bill.pk %}" class="btn btn-warning">
+                        <i class="fas fa-edit me-1"></i>Edit
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card shadow-sm mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0">Bill Details</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <strong>Customer:</strong> {{ bill.customer.name }}<br>
+                            <strong>Phone:</strong> {{ bill.customer.phone|default:"-" }}<br>
+                            <strong>Email:</strong> {{ bill.customer.email|default:"-" }}
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Bill Date:</strong> {{ bill.bill_date|date:"d/m/Y H:i" }}<br>
+                            <strong>Status:</strong> 
+                            {% if bill.status == 'paid' %}
+                            <span class="badge bg-success">Paid</span>
+                            {% elif bill.status == 'partial' %}
+                            <span class="badge bg-warning">Partial</span>
+                            {% else %}
+                            <span class="badge bg-danger">Unpaid</span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Type</th>
+                                <th>Particulars</th>
+                                <th>Net.Wt</th>
+                                <th>Tunch wstg</th>
+                                <th>Labour</th>
+                                <th>Rate</th>
+                                <th>SFine</th>
+                                <th>GFine</th>
+                                <th>Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in bill.items.all %}
+                            <tr>
+                                <td>{{ item.get_item_type_display|slice:":1" }}</td>
+                                <td>
+                                    {{ item.description }}{% if item.item_number %} {{ item.item_number }}{% endif %}
+                                    {% if item.item_code %}<br><small class="text-muted">Code: {{ item.item_code }}</small>{% endif %}
+                                </td>
+                                <td>{{ item.net_weight|floatformat:3 }}</td>
+                                <td>{{ item.tunch_wstg|floatformat:2 }}</td>
+                                <td>₹ {{ item.labour|floatformat:2 }}</td>
+                                <td>₹ {{ item.rate|floatformat:2 }}</td>
+                                <td>{{ item.s_fine|floatformat:3 }}</td>
+                                <td>{{ item.g_fine|floatformat:3 }}</td>
+                                <td>₹ {{ item.amount|floatformat:2 }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot>
+                            <tr class="table-info">
+                                <th colspan="6">Total</th>
+                                <th>{{ bill.total_fine_gold|floatformat:3 }}</th>
+                                <th>{{ bill.total_fine_gold|floatformat:3 }}</th>
+                                <th>₹ {{ bill.total_amount|floatformat:2 }}</th>
+                            </tr>
+                        </tfoot>
+                    </table>
+
+                    {% if bill.old_gold_exchanges.all %}
+                    <div class="mt-3">
+                        <h6>Old Gold Exchange:</h6>
+                        <table class="table table-sm table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Weight</th>
+                                    <th>Rate</th>
+                                    <th>Value</th>
+                                    <th>Description</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for og in bill.old_gold_exchanges.all %}
+                                <tr>
+                                    <td>{{ og.weight|floatformat:3 }} gm</td>
+                                    <td>₹ {{ og.rate_per_gram|floatformat:2 }}</td>
+                                    <td>₹ {{ og.value|floatformat:2 }}</td>
+                                    <td>{{ og.description|default:"-" }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot>
+                                <tr class="table-warning">
+                                    <th colspan="2">Total Old Gold Value</th>
+                                    <th colspan="2">₹ {{ bill.old_gold_value|floatformat:2 }}</th>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                    {% endif %}
+
+                    <div class="row mt-3">
+                        <div class="col-md-6 offset-md-6">
+                            <table class="table table-sm">
+                                <tr>
+                                    <td>Gross Amount:</td>
+                                    <td class="text-end">₹ {{ bill.total_amount|floatformat:2 }}</td>
+                                </tr>
+                                <tr>
+                                    <td>Old Gold Value:</td>
+                                    <td class="text-end">- ₹ {{ bill.old_gold_value|floatformat:2 }}</td>
+                                </tr>
+                                <tr>
+                                    <td>CGST ({{ bill.cgst_percent }}%):</td>
+                                    <td class="text-end">₹ {{ bill.cgst_amount|floatformat:2 }}</td>
+                                </tr>
+                                <tr>
+                                    <td>SGST ({{ bill.sgst_percent }}%):</td>
+                                    <td class="text-end">₹ {{ bill.sgst_amount|floatformat:2 }}</td>
+                                </tr>
+                                <tr class="table-primary">
+                                    <td><strong>Net Payable:</strong></td>
+                                    <td class="text-end"><strong>₹ {{ bill.net_payable|floatformat:2 }}</strong></td>
+                                </tr>
+                                <tr>
+                                    <td>Cash Received:</td>
+                                    <td class="text-end">₹ {{ bill.cash_received|floatformat:2 }}</td>
+                                </tr>
+                                <tr class="table-{% if bill.balance > 0 %}danger{% else %}success{% endif %}">
+                                    <td><strong>Balance:</strong></td>
+                                    <td class="text-end"><strong>₹ {{ bill.balance|floatformat:2 }}</strong></td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <!-- Add Payment -->
+            <div class="card shadow-sm mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0">Add Payment</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" action="{% url 'add_payment' bill.pk %}">
+                        {% csrf_token %}
+                        {{ payment_form|crispy }}
+                        <button type="submit" class="btn btn-success w-100">
+                            <i class="fas fa-money-bill-wave me-1"></i>Add Payment
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Payment History -->
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h5 class="mb-0">Payment History</h5>
+                </div>
+                <div class="card-body">
+                    {% if bill.payments.all %}
+                    <div class="list-group">
+                        {% for payment in bill.payments.all %}
+                        <div class="list-group-item">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <strong>₹ {{ payment.amount|floatformat:2 }}</strong><br>
+                                    <small class="text-muted">{{ payment.payment_method|title }}</small>
+                                </div>
+                                <small class="text-muted">{{ payment.payment_date|date:"d/m/Y H:i" }}</small>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-muted text-center">No payments recorded</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function emailBill(billId) {
+    if (confirm('Send bill via email?')) {
+        fetch(`/bills/${billId}/email/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Bill sent successfully!');
+            } else {
+                alert('Error: ' + (data.error || 'Failed to send email'));
+            }
+        });
+    }
+}
+</script>
+{% endblock %}
+
